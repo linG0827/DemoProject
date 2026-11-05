@@ -116,7 +116,7 @@ app.MapPost("/api/qr/generate", (QrGenerateRequest request) =>
 
 app.Run();
 
-
+/*
 
 #region// 核心识别函数
 static string? DecodeQr(byte[] imageBytes)
@@ -152,6 +152,9 @@ static string? DecodeQr(byte[] imageBytes)
     catch { return null; }
 }
 #endregion
+
+*/
+
 
 #region 定义接收文本的请求体模型
 public class QrGenerateRequest
