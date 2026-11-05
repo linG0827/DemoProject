@@ -4,12 +4,15 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+	 <EnableUnixSupport>true</EnableUnixSupport>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
-	  <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+	  <!-- 移除 System.Drawing.Common，换成下面两个 -->
+  <PackageReference Include="ZXing.Net.Bindings.SkiaSharp" Version="0.16.24" />
+  <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
   </ItemGroup>
 
 </Project>

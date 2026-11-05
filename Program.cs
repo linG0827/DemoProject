@@ -1,8 +1,8 @@
+using SkiaSharp;
 using ZXing;
 using ZXing.Common;
 using ZXing.QrCode;
-using System.Drawing; 
-using System.IO;
+using ZXing.SkiaSharp; // 关键：引入 ZXing 的 SkiaSharp 绑定
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -36,15 +36,35 @@ app.MapPost("/api/qr/decode", async (HttpRequest req) =>
     if (file is null || file.Length == 0)
         return Results.BadRequest(new { success = false, msg = "缺少 image 文件" });
 
-    using var ms = new MemoryStream();
-    await file.CopyToAsync(ms);
-    var text = DecodeQr(ms.ToArray());
+    try
+    {
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        ms.Position = 0; // 重置流位置
 
-    return text is null
-        ? Results.Ok(new { success = false, text = (string?)null, msg = "识别失败" })
-        : Results.Ok(new { success = true, text });
-})
-.DisableAntiforgery();
+        // 1. 将字节流转为 SkiaSharp 的 SKBitmap
+        using var skBitmap = SKBitmap.Decode(ms);
+        if (skBitmap == null)
+            return Results.Ok(new { success = false, text = (string?)null, msg = "图片解析失败" });
+
+        // 2. 使用 ZXing 的 SKBitmapLuminanceSource 进行识别
+        var source = new SKBitmapLuminanceSource(skBitmap);
+        var reader = new BarcodeReaderGeneric
+        {
+            Options = new DecodingOptions { TryHarder = true }
+        };
+
+        var result = reader.Decode(source);
+
+        return result is null
+            ? Results.Ok(new { success = false, text = (string?)null, msg = "未识别到二维码" })
+            : Results.Ok(new { success = true, text = result.Text });
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new { success = false, msg = $"识别出错: {ex.Message}" });
+    }
+}).DisableAntiforgery();
 #endregion
 
 #region 上传文本，生成二维码接口
@@ -52,59 +72,40 @@ app.MapPost("/api/qr/decode", async (HttpRequest req) =>
 app.MapPost("/api/qr/generate", (QrGenerateRequest request) =>
 {
     if (string.IsNullOrWhiteSpace(request.Text))
-    {
         return Results.BadRequest(new { success = false, msg = "文本内容不能为空" });
-    }
 
     try
-{
-    // 1. 设置二维码生成参数 (可调整大小)
-    int width = request.Width > 0 ? request.Width : 300;
-    int height = request.Height > 0 ? request.Height : 300;
-
-    var writer = new BarcodeWriterPixelData
     {
-        Format = BarcodeFormat.QR_CODE,
-        Options = new QrCodeEncodingOptions
+        int width = request.Width > 0 ? request.Width : 300;
+        int height = request.Height > 0 ? request.Height : 300;
+
+        // 1. 使用 SkiaSharp 的 BarcodeWriter
+        var writer = new BarcodeWriter
         {
-            Width = width,
-            Height = height,
-            Margin = 1 // 边框留白
-        }
-    };
-        Console.WriteLine($"生成二维码: {request.Text}, 尺寸: {width}x{height}");
-        // 2. 生成二维码像素数据
-        var pixelData = writer.Write(request.Text);
+            Format = BarcodeFormat.QR_CODE,
+            Options = new QrCodeEncodingOptions
+            {
+                Width = width,
+                Height = height,
+                Margin = 1
+            }
+        };
 
-    // 3. 将像素数据转换为 Bitmap，再保存为 PNG 的内存流
-    using var bitmap = new Bitmap(pixelData.Width, pixelData.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-    var bitmapData = bitmap.LockBits(
-        new Rectangle(0, 0, pixelData.Width, pixelData.Height),
-        System.Drawing.Imaging.ImageLockMode.WriteOnly,
-        System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+        // 2. 直接生成 SKBitmap
+        using var skBitmap = writer.Write(request.Text);
 
-    try
-    {
-        System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, bitmapData.Scan0, pixelData.Pixels.Length);
-    }
-    finally
-    {
-        bitmap.UnlockBits(bitmapData);
-    }
+        // 3. 编码为 PNG 格式的字节流
+        using var image = SKImage.FromBitmap(skBitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        byte[] imageBytes = data.ToArray();
 
-    // 4. 保存为 PNG 并转成 Base64
-    using var ms = new MemoryStream();
-    bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-    byte[] imageBytes = ms.ToArray();
-    string base64String = Convert.ToBase64String(imageBytes);
-
-        // 5. 直接返回文件流 (浏览器和 Postman 都可以直接预览图片)
+        // 4. 返回图片流
         return Results.File(imageBytes, "image/png");
     }
-catch (Exception ex)
-{
-    return Results.Problem($"生成二维码失败: {ex.Message}");
-}
+    catch (Exception ex)
+    {
+        return Results.Problem($"生成二维码失败: {ex.Message}");
+    }
 });
 
 #endregion
