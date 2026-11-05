@@ -1,5 +1,5 @@
 # 编译阶段
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # 安装 Linux 下 System.Drawing 所需的依赖
@@ -13,7 +13,7 @@ RUN dotnet publish "QrApi.csproj" \
     --no-restore
 
 # 运行阶段
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # 运行环境同样需要安装 libgdiplus
