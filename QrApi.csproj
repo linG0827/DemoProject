@@ -9,7 +9,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
 		<PackageReference Include="ZXing.Net" Version="0.16.11" />
-		<PackageReference Include="ZXing.Net.Bindings.SkiaSharp" Version="0.16.24" />
+		<PackageReference Include="ZXing.Net.Bindings.SkiaSharp" Version="0.16.14" />
 
 		<!-- 必须显式加上 SkiaSharp 本体，且版本与 NativeAssets 保持一致 -->
 		<PackageReference Include="SkiaSharp" Version="2.88.9" />
