@@ -19,8 +19,8 @@ WORKDIR /app
 # 运行环境同样需要安装 libgdiplus
 RUN apt-get update && apt-get install -y libgdiplus && rm -rf /var/lib/apt/lists/*
 
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8011
+EXPOSE 8011
 
 COPY --from=build /app/publish .
 
